@@ -8,8 +8,9 @@ import os
 import thread
 import commands
 import subprocess
-from time import sleep
 #import _subprocess
+
+
 
 
 #创建根窗口
@@ -29,26 +30,42 @@ display.pack()
 filterframe = Frame(root)
 filterframe.pack()
 
-### path browser 
+#global variables
 path_dir = StringVar()
 #path_dir.set("/home/wpf/Desktop/cocci/testdir")
 path_dir.set("/Users/wpf/Desktop/cocci/testdir")
 
+
+path_new = StringVar()
+path_old = StringVar()
+
+
+var = IntVar() #varibal for the radiobox
+var.set(1)
+kernel_str = "linux" #set default value
+
+RR = IntVar() #varibal for the checkbox
+WR = IntVar()
+RW = IntVar() 
+RR.set(1)  #set default value
+WR.set(0) 
+RW.set(0) 
+
+
+#callback functions
 def onSelectPath():
     #path_ = tkFileDialog.askopenfilename()
     path_ = tkFileDialog.askdirectory()
     path_dir.set(path_)
 
-Label(control, text = "Set target directory:").grid(row = 1, column = 0) 
-Entry(control, textvariable = path_dir).grid(row = 1, column = 1)
-Button(control, text = "Browse", command = onSelectPath).grid(row = 1, column = 2)
+def onSelectOldPath():
+    path_ = tkFileDialog.askopenfilename()
+    path_old.set(path_)
 
+def onSelectNewPath():
+    path_ = tkFileDialog.askopenfilename()
+    path_new.set(path_)
 
-
-### radio button
-var = IntVar() #varibal for the radiobox
-var.set(1)
-kernel_str = "linux" #set default value
 def onRatioSelect():
     global kernel_str
     if var.get() == 1:
@@ -56,56 +73,10 @@ def onRatioSelect():
     elif var.get() == 2:
         kernel_str = "freebsd"
 
-Label(control, text = "Select the kernel type:").grid(row = 2, column = 0) 
-R1 = Radiobutton(control, text="Linux/Android", variable=var, value=1,command = onRatioSelect)
-R1.grid(row = 2, column = 1)
-R2 = Radiobutton(control, text="FreeBSD/Darwin-xnu",variable=var,value=2,command = onRatioSelect)
-R2.grid(row = 3, column = 1)
-
-
-
-
-### check box
-RR = IntVar() #varibal for the checkbox
-WR = IntVar()
-RW = IntVar() 
-IL = IntVar()
-
-RR.set(0)  #set default value
-WR.set(0) 
-RW.set(0) 
-IL.set(1)
-
 def onCheckbutton():
     return
 
-Label(control, text = "Select the bug type:").grid(row = 4, column = 0) 
-Checkbutton(control,
-            variable = RR,
-            text = 'Read-Read (double fetch)',
-            onvalue = 1, 
-            offvalue = 0,
-            command = onCheckbutton).grid(row = 4, column = 1)   
-Checkbutton(control,
-            variable = WR,
-            text = 'Write-Read (read after write)',
-            onvalue = 1, 
-            offvalue = 0,
-            command = onCheckbutton).grid(row = 5, column = 1)
-Checkbutton(control,
-            variable = RW,
-            text = 'Read-Write (write after read)',
-            onvalue = 1, 
-            offvalue = 0, 
-            command = onCheckbutton).grid(row = 6, column = 1)
-Checkbutton(control,
-            variable = IL,
-            text = 'info leak',
-            onvalue = 1, 
-            offvalue = 0, 
-            command = onCheckbutton).grid(row = 7, column = 1)
 
-### clean button
 def clean_old_files(k_str,t_str):
     global T
     result_str = k_str + "_" + t_str + "_result.txt"
@@ -115,27 +86,7 @@ def clean_old_files(k_str,t_str):
     if os.path.isfile(result_str): 
         os.system("rm -r "+result_str)
 
-def onCleanButtonClick():
-    global T
-    clean_old_files("linux","RR")
-    clean_old_files("linux","WR")
-    clean_old_files("linux","RW")
-    clean_old_files("freebsd","RR")
-    clean_old_files("freebsd","WR")
-    clean_old_files("freebsd","RW")
-    T.delete(1.0,END)
-    T.insert(END, "=>Old files and directories are removed.\n")
-
-clean_btn = Button(control, text="Clean Old files", width = 10, height = 1, command = onCleanButtonClick)
-clean_btn.grid( row = 8, column = 1)   
-
-### text box and scroll bar
-S = Scrollbar(display)
-T = Text(display, state = NORMAL,height=20, width=100)
-S.pack(side=RIGHT, fill=Y)
-T.pack(side=LEFT, fill=Y)
-S.config(command=T.yview)
-T.config(yscrollcommand=S.set)
+    
 
 
 def prepare_dirs(k_str,t_str):
@@ -183,7 +134,7 @@ def copy_files(out,rfile):
 
 def start_detect(cmd):
     global T
-    #print "cmd=", cmd
+
     # for the problem in Windows that subprocess does not work well with pyinstaller
     #si = subprocess.STARTUPINFO()
     #si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
@@ -196,18 +147,21 @@ def start_detect(cmd):
                         #startupinfo=si
                         )  # use shell when cmd is a string 
 
+
+    
+
+
     while True:      
         data = ps.stdout.readline()
         T.insert(END, str(data)) #redirect the result to the text box
         if data == '' and ps.poll() != None:             
             break
-    
+
     #ps.stdout.close()
+
     #ps.stderr.close()
 
-stop = 0
-def thread_detect(k_str):
-    global stop
+def thread_task(k_str):
     #os.system("spatch -cocci_file pattern_match_linux_RR.cocci -D count=0 -dir testdir")
     if RR.get() == 1:
         prepare_dirs(k_str,"RR")
@@ -244,78 +198,34 @@ def thread_detect(k_str):
 
         copy_files(k_str+"_RW_outcome", k_str+"_RW_result.txt") 
 
-    if IL.get() == 1:
-        prepare_dirs(k_str,"IL")
-        
-        cmd = ["time","spatch","--sp-file","src/"+k_str+"_IL.cocci","--dir",path_dir.get()]
-
-        T.insert(END, "=>Start detect IL type for "+k_str+".\n")
-        
-        start_detect(cmd)
-
-        copy_files(k_str+"_IL_outcome", k_str+"_IL_result.txt") 
-
-    thread.exit_thread()
-    stop = 1
-
-def thread_fresh(arg):
-    global stop 
-    global T
-    # keep showing the bottom of the scrollbar in the textbox
-    while True:
-        if stop == 1:
-            break
-        sleep(0.05)
-        T.see(END)
     thread.exit_thread()
 
-### start button
 def onStartButtonClick():
 
     global kernel_str
     global path
-    
-    arg = 0
 
     #check the input values
     if path_dir.get() == "":
         tkMessageBox.showwarning("Error","Please select target directory")
         return
-    if RR.get() + RW.get() + WR.get() + IL.get() < 1:
+    if RR.get() + RW.get() + WR.get() < 1:
         tkMessageBox.showwarning("Error","Please toggle bug types")
         return
     #tkMessageBox.showinfo("Error","s")
  
-    thread.start_new_thread(thread_detect,(kernel_str,))# start new thread to avoid blocking the process
-    thread.start_new_thread(thread_fresh,(arg,))
-    
-   
+    thread.start_new_thread(thread_task,(kernel_str,))# start new thread to avoid blocking the process
 
-
-start_btn = Button(control, text="Start Detect",  width = 10, height = 1, bg = 'royalblue', command = onStartButtonClick)
-start_btn.configure(bg = 'royalblue')
-start_btn.grid( row = 8, column = 2)
-
-
-### old result file browsers
-path_new = StringVar()
-path_old = StringVar()
-def onSelectOldPath():
-    path_ = tkFileDialog.askopenfilename()
-    path_old.set(path_)
-def onSelectNewPath():
-    path_ = tkFileDialog.askopenfilename()
-    path_new.set(path_)
-
-Label(filterframe, text = "Choose old result file:").grid(row = 1, column = 0) 
-Entry(filterframe, textvariable = path_old).grid(row = 1, column = 1)
-Button(filterframe, text = "Browse", command = onSelectOldPath).grid(row = 1, column = 2)
-
-Label(filterframe, text = "Choose new result file:").grid(row = 2, column = 0) 
-Entry(filterframe, textvariable = path_new).grid(row = 2, column = 1)
-Button(filterframe, text = "Browse", command = onSelectNewPath).grid(row = 2, column = 2)
-
-
+def onCleanButtonClick():
+    global T
+    clean_old_files("linux","RR")
+    clean_old_files("linux","WR")
+    clean_old_files("linux","RW")
+    clean_old_files("freebsd","RR")
+    clean_old_files("freebsd","WR")
+    clean_old_files("freebsd","RW")
+    T.delete(1.0,END)
+    T.insert(END, "=>Old files and directories are removed.\n")
 
 def onShowNewFile():
     global T
@@ -338,13 +248,80 @@ def onShowNewFile():
     while True:      
         data = ps.stdout.readline()
         T.insert(END, str(data)) #redirect the result to the text box
-        sleep(0.01)
-        T.see(END)
         if data == '' and ps.poll() != None:             
             break
        
 
-Button(filterframe, text = "Show new files", bg = 'royalblue', command = onShowNewFile).grid(row = 3, column = 2)
+
+Label(control, text = "Set target directory:").grid(row = 1, column = 0) 
+Entry(control, textvariable = path_dir).grid(row = 1, column = 1)
+Button(control, text = "Browse", command = onSelectPath).grid(row = 1, column = 2)
+
+Label(control, text = "Select the kernel type:").grid(row = 2, column = 0) 
+R1 = Radiobutton(control, text="Linux/Android", variable=var, value=1,command = onRatioSelect)
+R1.grid(row = 2, column = 1)
+R2 = Radiobutton(control, text="FreeBSD/Darwin-xnu",variable=var,value=2,command = onRatioSelect)
+R2.grid(row = 3, column = 1)
+
+
+Label(control, text = "Select the bug type:").grid(row = 4, column = 0) 
+
+ 
+Checkbutton(control,
+            variable = RR,
+            text = 'Read-Read (double fetch)',
+            onvalue = 1, 
+            offvalue = 0,
+            command = onCheckbutton).grid(row = 4, column = 1)
+
+   
+Checkbutton(control,
+            variable = WR,
+            text = 'Write-Read (read after write)',
+            onvalue = 1, 
+            offvalue = 0,
+            command = onCheckbutton).grid(row = 5, column = 1)
+
+ 
+Checkbutton(control,
+            variable = RW,
+            text = 'Read-Write (write after read)',
+            onvalue = 1, 
+            offvalue = 0, 
+            command = onCheckbutton).grid(row = 6, column = 1)
+
+
+
+clean_btn = Button(control, text="Clean Old files", width = 10, height = 1, command = onCleanButtonClick)
+clean_btn.grid( row = 7, column = 1)
+
+start_btn = Button(control, text="Start Detect",  width = 10, height = 1, bg = 'royalblue', command = onStartButtonClick)
+start_btn.configure(bg = 'royalblue')
+start_btn.grid( row = 7, column = 2)
+
+# text box and scroll bar
+S = Scrollbar(display)
+T = Text(display, state = NORMAL,height=20, width=100)
+S.pack(side=RIGHT, fill=Y)
+T.pack(side=LEFT, fill=Y)
+S.config(command=T.yview)
+T.config(yscrollcommand=S.set)
+
+
+
+
+
+
+Label(filterframe, text = "Choose old result file:").grid(row = 1, column = 0) 
+Entry(filterframe, textvariable = path_old).grid(row = 1, column = 1)
+Button(filterframe, text = "Browse", command = onSelectOldPath).grid(row = 1, column = 2)
+
+Label(filterframe, text = "Choose new result file:").grid(row = 2, column = 0) 
+Entry(filterframe, textvariable = path_new).grid(row = 2, column = 1)
+Button(filterframe, text = "Browse", command = onSelectNewPath).grid(row = 2, column = 2)
+
+
+Button(filterframe, text = "Show new files", bg = 'royalblue',command = onShowNewFile).grid(row = 3, column = 2)
 
 '''
 var_msg = StringVar()
@@ -354,6 +331,8 @@ var_msg.set("Hey!? How are you doing?")
 msg.pack()
 
 '''
+
+
 
 
 root.mainloop()

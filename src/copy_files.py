@@ -56,7 +56,13 @@ class Tool:
 		print self.counter, "file copied"
 
 ###########################################
+#argv[1]  outcome directory
+#argv[2]  result log file
 print sys.argv[1], sys.argv[2]
 mytool = Tool(sys.argv[1], sys.argv[2])
 mytool.main()
 mytool.finish()
+
+
+
+
