@@ -3,12 +3,15 @@
 sudo apt-get install python-tk
 sudo apt-get install python-pip
 pip install pyinstaller
+(or download the tarball from http://www.pyinstaller.org/downloads.html, 
+and run "python setup.py intall")
 
 pyinstaller -F -w pygui.py
 
+# How to install coccinelle engine
+sudo apt-get install coccinelle
 
-
-#How to use
+# How to use
 
 1. For linux, double click start-gui excutable.
 

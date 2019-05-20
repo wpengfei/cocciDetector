@@ -8,6 +8,7 @@ import os
 import thread
 import commands
 import subprocess
+from time import sleep
 #import _subprocess
 
 
@@ -16,7 +17,7 @@ import subprocess
 #创建根窗口
 root = Tk()
 #设置窗口标题
-root.title("Detector")
+root.title("cocciDetector")
 #设置窗口大小
 root.geometry("800x600")
 
@@ -33,7 +34,7 @@ filterframe.pack()
 #global variables
 path_dir = StringVar()
 #path_dir.set("/home/wpf/Desktop/cocci/testdir")
-path_dir.set("/Users/wpf/Desktop/cocci/testdir")
+path_dir.set("/home/wpf/Desktop/cocciDetector/testdir")
 
 
 path_new = StringVar()
@@ -47,10 +48,11 @@ kernel_str = "linux" #set default value
 RR = IntVar() #varibal for the checkbox
 WR = IntVar()
 RW = IntVar() 
+IL = IntVar()
 RR.set(1)  #set default value
 WR.set(0) 
 RW.set(0) 
-
+IL.set(0)
 
 #callback functions
 def onSelectPath():
@@ -147,10 +149,6 @@ def start_detect(cmd):
                         #startupinfo=si
                         )  # use shell when cmd is a string 
 
-
-    
-
-
     while True:      
         data = ps.stdout.readline()
         T.insert(END, str(data)) #redirect the result to the text box
@@ -158,7 +156,6 @@ def start_detect(cmd):
             break
 
     #ps.stdout.close()
-
     #ps.stderr.close()
 
 def thread_task(k_str):
@@ -198,6 +195,17 @@ def thread_task(k_str):
 
         copy_files(k_str+"_RW_outcome", k_str+"_RW_result.txt") 
 
+    if IL.get() == 1:
+        prepare_dirs(k_str,"IL")
+        
+        cmd = ["time","spatch","--sp-file","src/"+k_str+"_IL.cocci","--dir",path_dir.get()]
+
+        T.insert(END, "=>Start detect IL type for "+k_str+".\n")
+        
+        start_detect(cmd)
+
+        copy_files(k_str+"_IL_outcome", k_str+"_IL_result.txt") 
+
     thread.exit_thread()
 
 def onStartButtonClick():
@@ -209,7 +217,7 @@ def onStartButtonClick():
     if path_dir.get() == "":
         tkMessageBox.showwarning("Error","Please select target directory")
         return
-    if RR.get() + RW.get() + WR.get() < 1:
+    if RR.get() + RW.get() + WR.get() +IL.get() < 1:
         tkMessageBox.showwarning("Error","Please toggle bug types")
         return
     #tkMessageBox.showinfo("Error","s")
@@ -221,9 +229,11 @@ def onCleanButtonClick():
     clean_old_files("linux","RR")
     clean_old_files("linux","WR")
     clean_old_files("linux","RW")
+    clean_old_files("linux","IL")
     clean_old_files("freebsd","RR")
     clean_old_files("freebsd","WR")
     clean_old_files("freebsd","RW")
+    clean_old_files("freebsd","IL")
     T.delete(1.0,END)
     T.insert(END, "=>Old files and directories are removed.\n")
 
@@ -248,6 +258,8 @@ def onShowNewFile():
     while True:      
         data = ps.stdout.readline()
         T.insert(END, str(data)) #redirect the result to the text box
+        sleep(0.01)
+        T.see(END)
         if data == '' and ps.poll() != None:             
             break
        
@@ -290,14 +302,20 @@ Checkbutton(control,
             offvalue = 0, 
             command = onCheckbutton).grid(row = 6, column = 1)
 
+Checkbutton(control,
+            variable = IL,
+            text = 'infomation leak',
+            onvalue = 1, 
+            offvalue = 0, 
+            command = onCheckbutton).grid(row = 7, column = 1)
 
 
 clean_btn = Button(control, text="Clean Old files", width = 10, height = 1, command = onCleanButtonClick)
-clean_btn.grid( row = 7, column = 1)
+clean_btn.grid( row = 8, column = 1)
 
 start_btn = Button(control, text="Start Detect",  width = 10, height = 1, bg = 'royalblue', command = onStartButtonClick)
 start_btn.configure(bg = 'royalblue')
-start_btn.grid( row = 7, column = 2)
+start_btn.grid( row = 8, column = 2)
 
 # text box and scroll bar
 S = Scrollbar(display)
