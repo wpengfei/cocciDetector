@@ -237,6 +237,10 @@ def onCleanButtonClick():
     T.delete(1.0,END)
     T.insert(END, "=>Old files and directories are removed.\n")
 
+def onClearTable():
+    global T
+    T.delete(1.0,END)
+    
 def onShowNewFile():
     global T
 
@@ -338,7 +342,7 @@ Label(filterframe, text = "Choose new result file:").grid(row = 2, column = 0)
 Entry(filterframe, textvariable = path_new).grid(row = 2, column = 1)
 Button(filterframe, text = "Browse", command = onSelectNewPath).grid(row = 2, column = 2)
 
-
+Button(filterframe, text = "Clear table", command = onClearTable).grid(row = 3, column = 1)
 Button(filterframe, text = "Show new files", bg = 'royalblue',command = onShowNewFile).grid(row = 3, column = 2)
 
 '''
